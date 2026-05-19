@@ -1349,15 +1349,6 @@ class Path(list):
         # FIXME: maybe use intersectPath() to implement this??
         points = []  # list of intersection (segment#, order, point) pair
 
-        def addPoint(i, P):
-            # FIXME maybe add sorted and check for duplicates?
-            if eq(P, self[i].A, EPS):
-                return
-            if eq(P, self[i].B, EPS):
-                return
-            oi = self[i].order(P)
-            points.append((i, oi, P))
-
         # Find all intersection points
         for i, si in enumerate(self[:-2]):
             if si.type == Segment.LINE and self[i + 1].type == Segment.LINE:
@@ -1370,11 +1361,21 @@ class Path(list):
                 if P1 is not None and P2 is not None and eq(P1, P2, EPS):
                     P2 = None
                 if P1:
-                    addPoint(i, P1)
-                    addPoint(j, P1)
+                    if eq(P1,self[j].A):
+                        pass
+                    P=P1
+                    oi = si.order(P)
+                    oj = self[j].order(P)
+                    points.append((i, oi, P))
+                    points.append((j, oj, P))
                 if P2:
-                    addPoint(i, P2)
-                    addPoint(j, P2)
+                    if eq(P2,self[j].A):
+                        pass
+                    P=P2
+                    oi = si.order(P)
+                    oj = self[j].order(P)
+                    points.append((i, oi, P))
+                    points.append((j, oj, P))
                 j += 1
 
         # sort according to index, and position of point
@@ -1883,24 +1884,25 @@ class Path(list):
     def removeZeroLength(self, eps=EPSV):
         i = 0
         while i < len(self):
-            if self[i].length() < eps:
-                start = self[i].A
-                del self[i]
-                # Join segments
-                if 0 < i < len(self):
-                    self[i].setStart(start)
-                continue
+            if i == len(self)-1 or self[i+1].type==Segment.LINE:
+                if self[i].length() < eps:
+                    start = self[i].A
+                    del self[i]
+                    # Join segments
+                    if 0 < i < len(self):
+                        self[i].setStart(start)
+                    continue
 
-            # Convert to line segments ones with small saggita
-            if self[i].type != Segment.LINE:
-                if self[i].type == Segment.CCW:
-                    df = self[i].endPhi - self[i].startPhi
-                else:
-                    df = self[i].startPhi - self[i].endPhi
-                if df < pi / 2.0:
-                    sagitta = self[i].radius * (1.0 - cos(df / 2.0))
-                    if sagitta < eps * 5:
-                        self[i].change2Line()
+                # Convert to line segments ones with small saggita
+                if self[i].type != Segment.LINE:
+                    if self[i].type == Segment.CCW:
+                        df = self[i].endPhi - self[i].startPhi
+                    else:
+                        df = self[i].startPhi - self[i].endPhi
+                    if df < pi / 2.0:
+                        sagitta = self[i].radius * (1.0 - cos(df / 2.0))
+                        if sagitta < eps * 5:
+                            self[i].change2Line()
             i += 1
 
         # Join last and first node if closed
