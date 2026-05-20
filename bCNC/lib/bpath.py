@@ -1341,7 +1341,6 @@ class Path(list):
                     p.overcut(D * offset)
 
         return opath
-
     # ----------------------------------------------------------------------
     # intersect path with self and mark all intersections
     # ----------------------------------------------------------------------
@@ -1376,6 +1375,52 @@ class Path(list):
                     oj = self[j].order(P)
                     points.append((i, oi, P))
                     points.append((j, oj, P))
+                j += 1
+
+        # sort according to index, and position of point
+        points.sort(key=itemgetter(0, 1))
+
+        # split paths
+        for i, o, P in reversed(points):
+            split = self[i].split(P)
+            if not isinstance(split, int):
+                self.insert(i + 1, split)
+                self[i]._cross = True
+        return points
+
+    # ----------------------------------------------------------------------
+    # intersect path with self and mark all intersections
+    # ----------------------------------------------------------------------
+    def intersectSelf_former(self):
+        # FIXME: maybe use intersectPath() to implement this??
+        points = []  # list of intersection (segment#, order, point) pair
+
+        def addPoint(i, P):
+            # FIXME maybe add sorted and check for duplicates?
+            if eq(P, self[i].A, EPS):
+                return
+            if eq(P, self[i].B, EPS):
+                return
+            oi = self[i].order(P)
+            points.append((i, oi, P))
+
+        # Find all intersection points
+        for i, si in enumerate(self[:-2]):
+            if si.type == Segment.LINE and self[i + 1].type == Segment.LINE:
+                j = i + 2
+            else:
+                j = i + 1
+            while j < len(self):
+                P1, P2 = si.intersect(self[j])
+                # skip doublet solution
+                if P1 is not None and P2 is not None and eq(P1, P2, EPS):
+                    P2 = None
+                if P1:
+                    addPoint(i, P1)
+                    addPoint(j, P1)
+                if P2:
+                    addPoint(i, P2)
+                    addPoint(j, P2)
                 j += 1
 
         # sort according to index, and position of point
@@ -1481,7 +1526,8 @@ class Path(list):
                 #    check if really it crosses the segment
                 #    or it goes back (only touching)
                 # Check middle of next path
-                include, last = isClose(self[i % len(self)].midPoint(), last)
+                if len(self):
+                    include, last = isClose(self[i % len(self)].midPoint(), last)
 
     # ----------------------------------------------------------------------
     # Perform overcut movements on corners, moving at half angle by
